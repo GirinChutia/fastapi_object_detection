@@ -10,9 +10,12 @@ from PIL import Image
 import io
 from starlette.responses import Response
 from preprocessing import get_image_from_bytes,image_to_byte_array
-
+from postprocessing import InterpreteYolov5Result
+import json
 
 image_io = {}
+model_dict = {}
+model_dict['model'] = None
 class ModelName(str, Enum):
     yolov5 = 'yolov5'
     yolov8 = 'yolov8'
@@ -38,15 +41,43 @@ def shutdown_event():
         log.write("[-] Application shutdown\n")
         log.write(f"Stop Time : {time.ctime(time.time())}\n")
 
+def infer_model(model,path):
+    results = model(path)
+    res =  results.pandas().xyxy[0].to_json(orient="records")
+    res = json.loads(res)
+    return res
+
 @app.get('/io_db')
 async def read_imageio_db():
     return image_io
+
+@app.get('/loded_model_info')
+async def get_loaded_model_info():
+    return model_dict
+
+@app.get('/load_model')
+async def get_model(model_name: ModelName):
+    if model_name.value == "yolov5":
+        model = torch.hub.load("ultralytics/yolov5",
+                       'custom',
+                       path=r'models\yolov5s.pt',
+                       force_reload=True)
+        model_dict['model'] = model
+        return {"model_name": model_name,
+                "message": "yolov5 loaded"}
     
 @app.post("/input_local/{image_path:path}")
 async def upload_image_local(image_path:str):
     local_save_path = os.path.join('inputs',os.path.basename(image_path))
     shutil.copy(image_path,local_save_path)
-    io_details = {"input_image_path": image_path,'local_save_path':local_save_path}
+    
+    assert model_dict['model'] != None
+    
+    res = infer_model(model_dict['model'],local_save_path)
+    io_details = {"input_image_path": image_path,
+                  'local_save_path':local_save_path,
+                  'result':res}
+    
     image_io[len(image_io)+1] = io_details
     return io_details
 
@@ -57,23 +88,27 @@ async def upload_image_url(image_url:str):
     f = open(local_save_path, 'wb')
     f.write(request.urlopen(image_url).read())
     f.close()
-    io_details = {"input_image_url": image_url,'local_save_path':local_save_path}
+    
+    assert model_dict['model'] != None
+    res = infer_model(model_dict['model'],local_save_path)
+    
+    io_details = {"input_image_url": image_url,
+                  'local_save_path':local_save_path,
+                  'result':res}
     image_io[len(image_io)+1] = io_details
+    
     return io_details
 
 @app.post("/input_upload")
 async def UploadImage(file: bytes = File(...)):
-    with open('inputs/image.jpg','wb') as image:
+    local_save_path = os.path.join('inputs','image.jpg')
+    with open(local_save_path,'wb') as image:
         image.write(file)
         image.close()
-    return 'file uploaded'
+    assert model_dict['model'] != None
+    res = infer_model(model_dict['model'],local_save_path)
+    return res
 
-@app.post("/objectdetection/")
-async def get_body(file: bytes = File(...)):
-    input_image =Image.open(io.BytesIO(file)).convert("RGB")
-    results_json = 'ok' #json.loads(results.pandas().xyxy[0].to_json(orient="records"))
-    return {"result": results_json}
-    
     
 
 

@@ -34,4 +34,6 @@ class InterpreteYolov5Result:
             cords.append(self.return_result(self.np_xyxy[item])[0])
             conf.append(self.return_result(self.np_xyxy[item])[1])
             clss.append(self.return_result(self.np_xyxy[item])[2])
-        return cords,conf,clss
+            
+        res = {'Boxes':cords,'Confidences':conf, 'Classes':clss}
+        return res
