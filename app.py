@@ -98,6 +98,7 @@ async def upload_image_url(image_url:str):
     io_details = {"input_image_url": image_url,
                   'local_save_path':local_save_path,
                   'result':res}
+    
     image_io[len(image_io)+1] = io_details
     
     return io_details
@@ -109,8 +110,15 @@ async def UploadImage(file: bytes = File(...)):
         image.write(file)
         image.close()
     assert model_dict['model'] != None
+    
     res = infer_model(model_dict['model'],local_save_path)
-    return res
+    
+    io_details = {"input_image_url": '', #TODO : add appropriate value
+                  'local_save_path':local_save_path,
+                  'result':res}
+    image_io[len(image_io)+1] = io_details
+    
+    return io_details
 
     
 
