@@ -16,6 +16,8 @@ import json
 image_io = {}
 model_dict = {}
 model_dict['model'] = None
+model_dict['model_name'] = "No model loaded"
+
 class ModelName(str, Enum):
     yolov5 = 'yolov5'
     yolov8 = 'yolov8'
@@ -53,7 +55,7 @@ async def read_imageio_db():
 
 @app.get('/loded_model_info')
 async def get_loaded_model_info():
-    return model_dict
+    return model_dict['model_name']
 
 @app.get('/load_model')
 async def get_model(model_name: ModelName):
@@ -63,6 +65,7 @@ async def get_model(model_name: ModelName):
                        path=r'models\yolov5s.pt',
                        force_reload=True)
         model_dict['model'] = model
+        model_dict['model_name'] = "yolov5 loaded"
         return {"model_name": model_name,
                 "message": "yolov5 loaded"}
     
