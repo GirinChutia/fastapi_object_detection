@@ -1,0 +1,8 @@
+logs/*.txt
+models/*.pt
+models/*.onnx
+inputs/
+outputs/
+__pycache__/
+fastapiml/
+*.ipynb
